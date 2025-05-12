@@ -1,0 +1,42 @@
+/* Custom styles for the sidebar */
+        .sidebar-yellow {
+            background-color: #ffdc40;
+        }
+
+        /* Style for links in the sidebar */
+        .nav-sidebar .nav-link {
+            color: #000;
+        }
+
+        /* Body style */
+        body {
+            background-color: #f8f9fa;
+            font-family: "Roboto", sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* Header and search container style */
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        /* Footer style */
+        footer {
+            background-color: white;
+            color: #000;
+            text-align: center;
+            padding: 15px 0;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+
+        /* Content wrapper padding */
+        .content-wrapper {
+            padding: 20px;
+            min-height: 100vh;
+            /* Ensures the footer is at the bottom */
+        }
