@@ -3,85 +3,76 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Http\Requests\ProfileRequest; // Import the profile request
-use Illuminate\Support\Facades\Storage;
+use App\Http\Requests\ProfileRequest;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 class ProfileController extends Controller
 {
-    // Menampilkan data profil pengguna yang sedang login
     public function showProfile()
     {
-        $user = Auth::user(); // Ambil pengguna yang sedang login
-
-        // Tentukan view berdasarkan jenis pengguna
+        $user = Auth::user();
         $view = Auth::guard('pengelola')->check() ? 'pengelola.profile' : 'pengguna.profile';
         return view($view, compact('user'));
     }
 
-    // Memperbarui data profil pengguna yang sedang login
-    public function update(ProfileRequest $request) // Menggunakan ProfileRequest di sini
+    public function update(ProfileRequest $request)
     {
-        $user = Auth::user(); // Ambil pengguna yang sedang login
+        $user = Auth::user();
 
         try {
             $this->updateUserData($user, $request);
-            // Gunakan ID yang sesuai berdasarkan tipe pengguna
             $userId = Auth::guard('pengelola')->check() ? $user->id_pengelola : $user->id_pengguna;
             Log::info('Profil berhasil diperbarui untuk pengguna ID: ' . $userId);
             return back()->with('success', 'Profile berhasil diperbarui.');
         } catch (\Exception $e) {
             Log::error('Gagal memperbarui profil untuk pengguna ID: ' . ($user->id_pengguna ?? $user->id_pengelola) . ' - Error: ' . $e->getMessage());
-            return back()->withErrors('Gagal memperbarui profil. Silakan coba lagi.'); // Menampilkan pesan error
+            return back()->withErrors('Gagal memperbarui profil. Silakan coba lagi.');
         }
     }
 
-    // Memperbarui data pengguna berdasarkan request
     private function updateUserData($user, $request)
     {
-        // Mengupdate nama dan email
         $user->nama = $request->nama;
         $user->email = $request->email;
 
-      // Menangani upload foto profil
-    if ($request->hasFile('foto')) {
-        // Tentukan path direktori untuk menyimpan foto
-        $fotoDirectory = public_path('images/profil');
+        // Upload foto ke Cloudinary
+        if ($request->hasFile('foto')) {
+            $foto = $request->file('foto');
 
-        // Pastikan direktori ada, jika tidak, buat direktori
-        if (!file_exists($fotoDirectory)) {
-            mkdir($fotoDirectory, 0755, true);
-        }
-
-        // Jika ada foto lama, hapus foto lama (kecuali default)
-        if ($user->foto && $user->foto !== 'images/profil/default.jpg') {
-            $oldFotoPath = public_path($user->foto);
-            if (file_exists($oldFotoPath)) {
-                unlink($oldFotoPath);
-                Log::info("Foto lama berhasil dihapus: {$user->foto}");
+            // Hapus foto lama dari Cloudinary jika bukan default
+            if ($user->foto && !str_contains($user->foto, 'default.jpg')) {
+                try {
+                    // Ambil public ID dari URL Cloudinary sebelumnya (jika kamu simpan di DB)
+                    $publicId = pathinfo(parse_url($user->foto, PHP_URL_PATH), PATHINFO_FILENAME);
+                    Cloudinary::destroy("profil/$publicId");
+                    Log::info("Foto lama Cloudinary dihapus: profil/$publicId");
+                } catch (\Exception $e) {
+                    Log::warning("Gagal menghapus foto lama dari Cloudinary: " . $e->getMessage());
+                }
             }
+
+            // Upload ke Cloudinary
+            $uploaded = Cloudinary::upload($foto->getRealPath(), [
+                'folder' => 'profil',
+                'public_id' => time() . '_' . pathinfo($foto->getClientOriginalName(), PATHINFO_FILENAME),
+                'overwrite' => true,
+                'resource_type' => 'image'
+            ]);
+
+            // Simpan URL foto baru
+            $user->foto = $uploaded->getSecurePath();
+            Log::info("Foto baru diunggah ke Cloudinary: " . $user->foto);
         }
 
-        // Simpan foto baru ke direktori
-        $fotoBaru = $request->file('foto');
-        $namaFotoBaru = time() . '_' . $fotoBaru->getClientOriginalName();
-        $fotoBaruPath = 'images/profil/' . $namaFotoBaru;
-        $fotoBaru->move($fotoDirectory, $namaFotoBaru);
-
-        // Simpan path foto ke database
-        $user->foto = $fotoBaruPath;
-        Log::info("Foto baru disimpan: {$fotoBaruPath}");
-    }
-
-        // Memperbarui password jika diberikan
+        // Update password jika diisi
         if ($request->filled('password')) {
-            $user->password = $request->password; // Encrypt password before saving
+            $user->password = $request->password; // encrypt jika perlu
         }
 
-        // Menyimpan data pengguna
         if (!$user->save()) {
-            throw new \Exception('Gagal memperbarui profil.'); // Melemparkan exception jika gagal
+            throw new \Exception('Gagal memperbarui profil.');
         }
     }
 }
