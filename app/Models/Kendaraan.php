@@ -46,15 +46,16 @@ class Kendaraan extends Model
                 ]);
     
                 // Tentukan lokasi file untuk menyimpan QR Code
-                $qrCodePath = 'images/qrcodes/' . $kendaraan->plat_nomor . '.png'; // Path relatif untuk QR Code
-    
-                // Generate QR Code sebagai PNG dan simpan ke public_path
-                QrCode::format('png')
+                $qrCodePath = 'images/qrcodes/' . $kendaraan->plat_nomor . '.svg'; // Gunakan format SVG
+                
+                // Generate QR Code sebagai SVG dan simpan ke public_path
+                QrCode::format('svg')
                     ->size(200)
-                    ->generate($qrCodeContent, public_path($qrCodePath)); // Simpan ke public folder
-    
+                    ->generate($qrCodeContent, public_path($qrCodePath)); // Simpan sebagai SVG ke folder public
+                
                 // Simpan path QR Code ke database
                 $kendaraan->qr_code = $qrCodePath;
+
             }
         });
     }
