@@ -119,7 +119,10 @@
         border-color: black;
     }
 </style>
-
+<!-- Overlay Loading -->
+<div id="loading-overlay">
+    <img id="loading-logo" src="{{ asset('images/spot-logo.png') }}" alt="SPOT Logo">
+</div>
 <div class="container">
     <h3>Kelola Kendaraan</h3>
     <div class="row">
@@ -144,15 +147,16 @@
                         <div>
                             <span class="ml-2">Tampilkan</span>
                             <form id="paginationForm" method="GET" action="{{ route('pengelola.kelola_kendaraan.index') }}" class="d-inline">
-                                <select id="rows" class="custom-select d-inline border-black" style="width: auto;" onchange="this.form.submit()">
+                                <select name="perPage" id="rows" class="custom-select d-inline border-black" style="width: auto;" onchange="this.form.submit()">
+                                    <option value="5" {{ $perPage == 5 ? 'selected' : '' }}>5</option>
                                     <option value="10" {{ $perPage == 10 ? 'selected' : '' }}>10</option>
                                     <option value="20" {{ $perPage == 20 ? 'selected' : '' }}>20</option>
-                                    <option value="30" {{ $perPage == 30 ? 'selected' : '' }}>30</option>
                                     <option value="50" {{ $perPage == 50 ? 'selected' : '' }}>50</option>
                                 </select>
                                 <span class="ml-2">Baris</span>
                             </form>
                         </div>
+
                         <div class="search-container">
                             <form method="GET" action="{{ route('pengelola.kelola_kendaraan.search') }}" class="d-flex align-items-center">
                                 <input type="text" name="query" class="form-control border-black" placeholder="Pencarian" style="width: auto;" value="{{ request()->get('query') }}">
@@ -183,7 +187,8 @@
                             <tbody class="bg-putih">
                                 @foreach ($kendaraan as $index => $data)
                                 <tr>
-                                    <td>{{ $index + 1 }}</td>
+                                    <td>{{ $kendaraan->firstItem() + $index }}</td>
+
                                     <td>{{ $data->penggunaParkir->id_pengguna }}</td>
                                     <td>{{ $data->plat_nomor }}</td>
                                     <td>{{ $data->jenis }}</td>
@@ -194,19 +199,18 @@
                                     </td>
                                     <td>
                                         <button
-                                        class="btn btn-info btn-sm"
-                                        data-toggle="modal"
-                                        data-target="#editModal"
-                                        data-plat-nomor="{{ $data->plat_nomor }}"
-                                        data-jenis="{{ $data->jenis }}"
-                                        data-warna="{{ $data->warna }}"
-                                        data-foto=" {{ asset($data->foto) }}"
-                                        data-id-pengguna="{{ $data->penggunaParkir->id_pengguna ?? '' }}">
-                                        <i class="fas fa-edit"></i> Edit
-                                    </button>
+                                            class="btn btn-info btn-sm"
+                                            data-toggle="modal"
+                                            data-target="#editModal"
+                                            data-plat-nomor="{{ $data->plat_nomor }}"
+                                            data-jenis="{{ $data->jenis }}"
+                                            data-warna="{{ $data->warna }}"
+                                            data-foto="{{ asset($data->foto) }}"
+                                            data-id-pengguna="{{ $data->penggunaParkir->id_pengguna ?? '' }}">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </button>
 
-
-                                        <button class="btn btn-danger btn-sm" onclick="confirmDelete('{{ $data->plat_nomor }}', '{{ $data->penggunaParkir->nama}}')">
+                                        <button class="btn btn-danger btn-sm" onclick="confirmDelete('{{ $data->plat_nomor }}', '{{ $data->penggunaParkir->nama }}')">
                                             <i class="fas fa-trash-alt"></i> Hapus
                                         </button>
                                     </td>
@@ -391,33 +395,32 @@
                                                     @csrf
                                                     @method('PUT')
                                                     <div class="row">
-                                                    <!-- Left Column: Upload Foto Kendaraan -->
-                                                    <div class="col-md-6 text-center" style="border-right: 1px solid black;">
-                                                        <div class="upload-area" onclick="document.getElementById('uploadPhotoVehicleEdit').click()">
-                                                            <img 
-                                                                id="previewUserEdit{{ $data->plat_nomor }}"
-                                                                src="{{ $data->foto ? asset($data->foto) : asset('images/kendaraan/default.jpg') }}" 
-                                                                alt="Preview Foto Kendaraan" 
-                                                                style="display:block; max-width:100%; border-radius: 5px;" 
-                                                                class="img-fluid mb-3"/>
-                                                    
-                                                            <div style="position: absolute; bottom: 0; left: 0; right: 0; background-color: #FFDC40; color: black; padding: 10px; border-top: 1px solid black; border-bottom-left-radius: 5px; border-bottom-right-radius: 5px; cursor: pointer;">
-                                                                <i class="fas fa-plus-circle fa-2x"></i>
+                                                        <!-- Left Column: Upload Foto Kendaraan -->
+                                                        <div class="col-md-6 text-center" style="border-right: 1px solid black;">
+                                                            <div class="upload-area" onclick="document.getElementById('uploadPhotoVehicleEdit').click()">
+                                                                <img
+                                                                    id="previewUserEdit{{ $data->plat_nomor }}"
+                                                                    src="{{ $data->foto ? asset($data->foto) : asset('images/kendaraan/default.jpg') }}"
+                                                                    alt="Preview Foto Kendaraan"
+                                                                    style="display:block; max-width:100%; border-radius: 5px;"
+                                                                    class="img-fluid mb-3" />
+
+                                                                <div style="position: absolute; bottom: 0; left: 0; right: 0; background-color: #FFDC40; color: black; padding: 10px; border-top: 1px solid black; border-bottom-left-radius: 5px; border-bottom-right-radius: 5px; cursor: pointer;">
+                                                                    <i class="fas fa-plus-circle fa-2x"></i>
+                                                                </div>
+
+                                                                <input
+                                                                    type="file"
+                                                                    id="uploadPhotoVehicleEdit"
+                                                                    name="foto_kendaraan"
+                                                                    style="display: none;"
+                                                                    accept="image/*"
+                                                                    onchange="previewImage(event, 'previewVehicleEdit')">
                                                             </div>
-                                                            
-                                                            <input 
-                                                                type="file" 
-                                                                id="uploadPhotoVehicleEdit" 
-                                                                name="foto_kendaraan" 
-                                                                style="display: none;" 
-                                                                accept="image/*" 
-                                                                onchange="previewImage(event, 'previewVehicleEdit')"
-                                                            >
+                                                            @error('foto_kendaraan')
+                                                            <div class="text-danger">{{ $message }}</div>
+                                                            @enderror
                                                         </div>
-                                                        @error('foto_kendaraan')
-                                                        <div class="text-danger">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
 
 
                                                         <!-- Right Column: Input Fields -->
@@ -540,34 +543,34 @@
     }
 
 
-// Fungsi untuk memuat data ke modal edit
-// Fungsi untuk memuat data ke modal edit
-$('#editModal').on('show.bs.modal', function(event) {
-    var button = $(event.relatedTarget); // Tombol yang memicu modal
-    var platNomor = button.data('plat-nomor');
-    var jenis = button.data('jenis');
-    var warna = button.data('warna');
-    var foto = button.data('foto'); // Ambil URL foto yang benar
-    var idPengguna = button.data('id-pengguna');
+    // Fungsi untuk memuat data ke modal edit
+    // Fungsi untuk memuat data ke modal edit
+    $('#editModal').on('show.bs.modal', function(event) {
+        var button = $(event.relatedTarget); // Tombol yang memicu modal
+        var platNomor = button.data('plat-nomor');
+        var jenis = button.data('jenis');
+        var warna = button.data('warna');
+        var foto = button.data('foto'); // Ambil URL foto yang benar
+        var idPengguna = button.data('id-pengguna');
 
-    var modal = $(this);
+        var modal = $(this);
 
-    modal.find('#plat_nomor_edit').val(platNomor);
-    modal.find('#plat_nomor_hidden').val(platNomor);
-    modal.find('#jenis_edit').val(jenis);
-    modal.find('#warna_edit').val(warna);
-    modal.find('#id_pengguna_edit').val(idPengguna);
+        modal.find('#plat_nomor_edit').val(platNomor);
+        modal.find('#plat_nomor_hidden').val(platNomor);
+        modal.find('#jenis_edit').val(jenis);
+        modal.find('#warna_edit').val(warna);
+        modal.find('#id_pengguna_edit').val(idPengguna);
 
-    // Menampilkan foto kendaraan yang sesuai
-    if (foto) {
-        modal.find('#foto_kendaraan_edit').attr('src', '/' + foto); // Set foto sesuai dengan path yang benar
-        modal.find('#foto_kendaraan_edit').show(); // Menampilkan foto
-    } else {
-        modal.find('#foto_kendaraan_edit').hide(); // Menyembunyikan foto jika tidak ada
-    }
+        // Menampilkan foto kendaraan yang sesuai
+        if (foto) {
+            modal.find('#foto_kendaraan_edit').attr('src', '/' + foto); // Set foto sesuai dengan path yang benar
+            modal.find('#foto_kendaraan_edit').show(); // Menampilkan foto
+        } else {
+            modal.find('#foto_kendaraan_edit').hide(); // Menyembunyikan foto jika tidak ada
+        }
 
-    modal.find('#editForm').attr('action', '/kelola-kendaraan/update/' + platNomor);
-});
+        modal.find('#editForm').attr('action', '/kelola-kendaraan/update/' + platNomor);
+    });
 
 
 
@@ -609,8 +612,6 @@ $('#editModal').on('show.bs.modal', function(event) {
         var rows = document.getElementById('rows').value;
         window.location.href = '?rows=' + rows; // Menyertakan parameter rows dalam URL
     }
-
-   
 </script>
 <!-- jQuery and Bootstrap 4 JS -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
