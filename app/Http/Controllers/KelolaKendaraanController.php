@@ -25,14 +25,18 @@ class KelolaKendaraanController extends Controller
 
     public function index(Request $request)
     {
-        $perPage = $request->input('rows', 10);
+        $perPage = $request->input('rows', 5);
 
         // Ambil enum jenis kendaraan dan warna kendaraan
         $this->jenisArray = $this->getEnumValues('kendaraan', 'jenis');
         $this->warnaArray = $this->getEnumValues('kendaraan', 'warna');
 
-        // Ambil semua kendaraan dengan pagination dan pengguna yang terkait
-        $kendaraan = Kendaraan::with('penggunaParkir')->paginate($perPage);
+        // Ambil kendaraan dengan status pengguna parkir aktif
+        $kendaraan = Kendaraan::with('penggunaParkir')
+            ->whereHas('penggunaParkir', function ($query) {
+                $query->where('status', 'aktif');  // Filter berdasarkan status aktif
+            })
+            ->paginate($perPage);
 
         // Ambil plat nomor kendaraan jika ada di request
         $platNomor = $request->input('plat_nomor');
@@ -74,6 +78,7 @@ class KelolaKendaraanController extends Controller
             'idPenggunaTerkait' => $idPenggunaTerkait,
         ]);
     }
+
 
 
     public function search(Request $request)
@@ -175,76 +180,76 @@ class KelolaKendaraanController extends Controller
         }
     }
 
-public function update(KendaraanRequest $request, $plat_nomor)
-{
-    // Mencari kendaraan berdasarkan plat_nomor
-    $kendaraan = Kendaraan::where('plat_nomor', $plat_nomor)->first();
+    public function update(KendaraanRequest $request, $plat_nomor)
+    {
+        // Mencari kendaraan berdasarkan plat_nomor
+        $kendaraan = Kendaraan::where('plat_nomor', $plat_nomor)->first();
 
-    if (!$kendaraan) {
-        Log::warning("Kendaraan dengan plat nomor {$plat_nomor} tidak ditemukan.");
-        return redirect()->route('pengelola.kelola_kendaraan.index')->with('error', 'Kendaraan tidak ditemukan!');
-    }
-
-    // Mencatat log awal pembaruan
-    Log::info("Memulai pembaruan kendaraan dengan plat nomor {$plat_nomor}");
-
-    // Menyimpan data lama untuk log perubahan
-    $oldJenis = $kendaraan->jenis;
-    $oldWarna = $kendaraan->warna;
-    $oldFoto = $kendaraan->foto;
-    $oldIdPengguna = $kendaraan->id_pengguna;
-
-    // Validasi id_pengguna jika diubah
-    if ($request->id_pengguna && $request->id_pengguna != $oldIdPengguna) {
-        $newIdPengguna = $request->id_pengguna;
-
-        // Pastikan pengguna yang dipilih belum memiliki kendaraan
-        $userHasVehicle = Kendaraan::where('id_pengguna', $newIdPengguna)->exists();
-        if ($userHasVehicle) {
-            Log::warning("Pengguna dengan ID {$newIdPengguna} sudah memiliki kendaraan. Pembaruan ditolak.");
-            return redirect()->back()->with('error', 'Pengguna yang dipilih sudah memiliki kendaraan!');
+        if (!$kendaraan) {
+            Log::warning("Kendaraan dengan plat nomor {$plat_nomor} tidak ditemukan.");
+            return redirect()->route('pengelola.kelola_kendaraan.index')->with('error', 'Kendaraan tidak ditemukan!');
         }
 
-        // Update id_pengguna
-        $kendaraan->id_pengguna = $newIdPengguna;
-        Log::info("Id pengguna kendaraan dengan plat nomor {$plat_nomor} diubah menjadi {$newIdPengguna}");
-    }
+        // Mencatat log awal pembaruan
+        Log::info("Memulai pembaruan kendaraan dengan plat nomor {$plat_nomor}");
 
-    // Update jenis dan warna kendaraan
-    $kendaraan->jenis = $request->jenis;
-    $kendaraan->warna = $request->warna;
+        // Menyimpan data lama untuk log perubahan
+        $oldJenis = $kendaraan->jenis;
+        $oldWarna = $kendaraan->warna;
+        $oldFoto = $kendaraan->foto;
+        $oldIdPengguna = $kendaraan->id_pengguna;
 
-    // Mengelola upload foto kendaraan jika ada
-    if ($request->hasFile('foto_kendaraan')) {
-        // Hapus foto lama jika ada
-        if ($oldFoto && file_exists(public_path($oldFoto))) {
-            unlink(public_path($oldFoto));
-            Log::info("Foto lama kendaraan dengan plat nomor {$plat_nomor} dihapus: {$oldFoto}");
+        // Validasi id_pengguna jika diubah
+        if ($request->id_pengguna && $request->id_pengguna != $oldIdPengguna) {
+            $newIdPengguna = $request->id_pengguna;
+
+            // Pastikan pengguna yang dipilih belum memiliki kendaraan
+            $userHasVehicle = Kendaraan::where('id_pengguna', $newIdPengguna)->exists();
+            if ($userHasVehicle) {
+                Log::warning("Pengguna dengan ID {$newIdPengguna} sudah memiliki kendaraan. Pembaruan ditolak.");
+                return redirect()->back()->with('error', 'Pengguna yang dipilih sudah memiliki kendaraan!');
+            }
+
+            // Update id_pengguna
+            $kendaraan->id_pengguna = $newIdPengguna;
+            Log::info("Id pengguna kendaraan dengan plat nomor {$plat_nomor} diubah menjadi {$newIdPengguna}");
         }
 
-        // Simpan foto baru di public/images/kendaraan
-        $newFotoName = time() . '_' . $request->file('foto_kendaraan')->getClientOriginalName();
-        $filePath = 'images/kendaraan/' . $newFotoName;
-        $request->file('foto_kendaraan')->move(public_path('images/kendaraan'), $newFotoName);
+        // Update jenis dan warna kendaraan
+        $kendaraan->jenis = $request->jenis;
+        $kendaraan->warna = $request->warna;
 
-        // Update path foto ke database
-        $kendaraan->foto = $filePath;
-        Log::info("Foto baru kendaraan dengan plat nomor {$plat_nomor} disimpan: {$filePath}");
+        // Mengelola upload foto kendaraan jika ada
+        if ($request->hasFile('foto_kendaraan')) {
+            // Hapus foto lama jika ada
+            if ($oldFoto && file_exists(public_path($oldFoto))) {
+                unlink(public_path($oldFoto));
+                Log::info("Foto lama kendaraan dengan plat nomor {$plat_nomor} dihapus: {$oldFoto}");
+            }
+
+            // Simpan foto baru di public/images/kendaraan
+            $newFotoName = time() . '_' . $request->file('foto_kendaraan')->getClientOriginalName();
+            $filePath = 'images/kendaraan/' . $newFotoName;
+            $request->file('foto_kendaraan')->move(public_path('images/kendaraan'), $newFotoName);
+
+            // Update path foto ke database
+            $kendaraan->foto = $filePath;
+            Log::info("Foto baru kendaraan dengan plat nomor {$plat_nomor} disimpan: {$filePath}");
+        }
+
+        // Simpan perubahan ke database
+        $kendaraan->save();
+
+        // Catat perubahan yang dilakukan
+        Log::info("Kendaraan dengan plat nomor {$plat_nomor} berhasil diperbarui. Perubahan: " .
+            "Jenis dari {$oldJenis} menjadi {$kendaraan->jenis}, " .
+            "Warna dari {$oldWarna} menjadi {$kendaraan->warna}, " .
+            "Id Pengguna dari {$oldIdPengguna} menjadi {$kendaraan->id_pengguna}, " .
+            "Foto dari {$oldFoto} menjadi {$kendaraan->foto}.");
+
+        // Redirect ke halaman index dengan pesan sukses
+        return redirect()->route('pengelola.kelola_kendaraan.index')->with('success', 'Kendaraan berhasil diperbarui!');
     }
-
-    // Simpan perubahan ke database
-    $kendaraan->save();
-
-    // Catat perubahan yang dilakukan
-    Log::info("Kendaraan dengan plat nomor {$plat_nomor} berhasil diperbarui. Perubahan: " .
-        "Jenis dari {$oldJenis} menjadi {$kendaraan->jenis}, " .
-        "Warna dari {$oldWarna} menjadi {$kendaraan->warna}, " .
-        "Id Pengguna dari {$oldIdPengguna} menjadi {$kendaraan->id_pengguna}, " .
-        "Foto dari {$oldFoto} menjadi {$kendaraan->foto}.");
-
-    // Redirect ke halaman index dengan pesan sukses
-    return redirect()->route('pengelola.kelola_kendaraan.index')->with('success', 'Kendaraan berhasil diperbarui!');
-}
 
 
 
