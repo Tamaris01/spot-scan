@@ -18,7 +18,7 @@ return [
     |
     */
 
-   'driver' => 'file', // atau redis/database sesuai konfigurasi kamu
+   'driver' => env('SESSION_DRIVER', 'file'),
 
 
     /*
